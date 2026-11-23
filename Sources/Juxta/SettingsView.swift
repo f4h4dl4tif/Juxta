@@ -19,6 +19,13 @@ struct SettingsView: View {
                 Toggle("Show whitespace characters", isOn: $p.showWhitespace)
                 Toggle("Show line details pane", isOn: $p.showDetailPane)
                 Stepper("Context lines: \(p.contextLines)", value: $p.contextLines, in: 0...20)
+                Toggle(isOn: $p.glassTheme) {
+                    Text("Liquid Glass theme")
+                    Text(GlassTheme.isSupported
+                         ? "Use Liquid Glass for tabs, toolbars and cards. Compared text stays on solid panes."
+                         : "Requires macOS 26.")
+                }
+                .disabled(!GlassTheme.isSupported)
             }
             .formStyle(.grouped)
             .tabItem { Label("Display", systemImage: "textformat") }

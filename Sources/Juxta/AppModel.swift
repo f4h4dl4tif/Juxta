@@ -199,7 +199,11 @@ final class AppModel: ObservableObject {
         Recents.shared.add(kind: kind, paths: paths)
         withAnimation(.easeOut(duration: 0.15)) {
             if let i = tabs.firstIndex(where: { $0.id == selected }), tabs[i].session == nil {
-                tabs[i].session = session
+                // Swap in a fresh Tab (new id) rather than mutating the home tab in place:
+                // Tab equality is by id, so an in-place change can leave views showing Home.
+                let t = Tab(session: session)
+                tabs[i] = t
+                selected = t.id
             } else {
                 let t = Tab(session: session)
                 if let i = tabs.firstIndex(where: { $0.id == selected }) { tabs.insert(t, at: i + 1) } else { tabs.append(t) }

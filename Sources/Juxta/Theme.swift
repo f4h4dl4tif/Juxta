@@ -98,6 +98,8 @@ final class Prefs: ObservableObject {
     @AppStorage("defaultWhitespace") var defaultWhitespace: String = "Compare whitespace" { willSet { objectWillChange.send() } }
     @AppStorage("defaultIgnoreCase") var defaultIgnoreCase: Bool = false { willSet { objectWillChange.send() } }
     @AppStorage("ignorePatterns") var ignorePatterns: String = "" { willSet { objectWillChange.send() } }
+    /// Optional Liquid Glass chrome (macOS 26+). Off by default; diff content always stays on solid surfaces.
+    @AppStorage("glassTheme") var glassTheme: Bool = false { willSet { objectWillChange.send() } }
     @AppStorage("folderExcludes") var folderExcludes: String = ".git;.DS_Store;node_modules;.build;DerivedData" { willSet { objectWillChange.send() } }
 
     var editorFont: NSFont {
@@ -118,6 +120,7 @@ struct ToolButton: View {
     var help: String? = nil
     let action: () -> Void
     @State private var hover = false
+    @ObservedObject private var prefs = Prefs.shared
 
     var body: some View {
         Button(action: action) {
@@ -136,7 +139,8 @@ struct ToolButton: View {
             .padding(.vertical, 4)
             .frame(minWidth: 46)
             .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                // Glass toolbar is a capsule, so its highlights are capsules too; plain keeps the original rounded rect.
+                RoundedRectangle(cornerRadius: prefs.glassTheme ? 20 : 7, style: .continuous)
                     .fill(active ? Color.accentColor.opacity(0.14) : (hover ? Color.primary.opacity(0.07) : .clear))
             )
             .contentShape(Rectangle())
@@ -156,7 +160,26 @@ struct ToolDivider: View {
 
 struct Toolbar<Content: View>: View {
     @ViewBuilder let content: Content
+    @ObservedObject private var prefs = Prefs.shared
     var body: some View {
+        if prefs.glassTheme, #available(macOS 26, *) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                GlassEffectContainer {
+                    HStack(spacing: 2) { content }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .glassEffect(.regular, in: Capsule())
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+            }
+            .frame(height: 58)
+        } else {
+            plain
+        }
+    }
+
+    private var plain: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 2) { content }
                 .padding(.horizontal, 10)
@@ -312,6 +335,13 @@ let shortDate: DateFormatter = {
     f.timeStyle = .short
     return f
 }()
+
+enum GlassTheme {
+    static var isSupported: Bool {
+        if #available(macOS 26, *) { return true }
+        return false
+    }
+}
 
 extension View {
     /// Styles a Menu so its custom icon-over-label content renders like a ToolButton.

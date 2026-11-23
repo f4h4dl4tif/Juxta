@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         NSWindow.allowsAutomaticWindowTabbing = false
+        GlassSnapshot.runIfRequested()
         // Developer aid: JUXTA_SNAPSHOT=/path.png writes a picture of the main window after launch.
         if let path = ProcessInfo.processInfo.environment["JUXTA_SNAPSHOT"] {
             let delay = Double(ProcessInfo.processInfo.environment["JUXTA_SNAPSHOT_DELAY"] ?? "") ?? 2.5
@@ -211,6 +212,7 @@ struct TabItem: View {
     let tab: Tab
     let selected: Bool
     @State private var hover = false
+    @ObservedObject private var prefs = Prefs.shared
 
     var body: some View {
         HStack(spacing: 7) {
@@ -231,11 +233,7 @@ struct TabItem: View {
         .padding(.leading, 11).padding(.trailing, 6)
         .frame(height: 28)
         .frame(minWidth: 120, maxWidth: 240)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(selected ? Color(nsColor: .controlBackgroundColor) : (hover ? Color.primary.opacity(0.06) : .clear))
-                .shadow(color: .black.opacity(selected ? 0.12 : 0), radius: 1.5, y: 0.5)
-        )
+        .modifier(TabItemBackground(selected: selected, hover: hover, glass: prefs.glassTheme))
         .contentShape(Rectangle())
         .onTapGesture { app.selected = tab.id }
         .onHover { hover = $0 }
@@ -243,6 +241,24 @@ struct TabItem: View {
         .contextMenu {
             Button("Close Tab") { app.close(tab.id) }
             Button("Close Other Tabs") { for t in app.tabs where t.id != tab.id { app.close(t.id) } }
+        }
+    }
+}
+
+/// Plain: the original solid chip for the selected tab. Glass: the selected tab is a glass chip.
+struct TabItemBackground: ViewModifier {
+    let selected: Bool
+    let hover: Bool
+    let glass: Bool
+    func body(content: Content) -> some View {
+        if glass, selected, #available(macOS 26, *) {
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        } else {
+            content.background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(selected ? Color(nsColor: .controlBackgroundColor) : (hover ? Color.primary.opacity(0.06) : .clear))
+                    .shadow(color: .black.opacity(selected ? 0.12 : 0), radius: 1.5, y: 0.5)
+            )
         }
     }
 }

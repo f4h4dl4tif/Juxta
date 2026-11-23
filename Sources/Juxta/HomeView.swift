@@ -129,6 +129,7 @@ struct SessionCard: View {
     let kind: SessionKind
     let action: () -> Void
     @State private var hover = false
+    @ObservedObject private var prefs = Prefs.shared
 
     var body: some View {
         Button(action: action) {
@@ -144,18 +145,35 @@ struct SessionCard: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-                    .shadow(color: .black.opacity(hover ? 0.12 : 0.05), radius: hover ? 10 : 3, y: hover ? 4 : 1)
-            )
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(hover ? kind.tint.opacity(0.5) : Color.jSeparator))
+            .modifier(CardSurface(hover: hover, tint: kind.tint, glass: prefs.glassTheme))
             .scaleEffect(hover ? 1.015 : 1)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
         .animation(.spring(response: 0.25, dampingFraction: 0.8), value: hover)
+    }
+}
+
+/// Plain: the original solid card. Glass: an interactive glass card.
+struct CardSurface: ViewModifier {
+    let hover: Bool
+    let tint: Color
+    let glass: Bool
+    func body(content: Content) -> some View {
+        if glass, #available(macOS 26, *) {
+            content
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(hover ? tint.opacity(0.5) : .clear))
+        } else {
+            content
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                        .shadow(color: .black.opacity(hover ? 0.12 : 0.05), radius: hover ? 10 : 3, y: hover ? 4 : 1)
+                )
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(hover ? tint.opacity(0.5) : Color.jSeparator))
+        }
     }
 }
 
